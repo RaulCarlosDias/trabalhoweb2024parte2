@@ -2,94 +2,98 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Form, Alert, Button, Card, Col, Row, ListGroup } from 'react-bootstrap';
 import './App.css';
 
-const API_URL = 'https://restcountries.com/v3.1';
+const URL_API = 'https://restcountries.com/v3.1';
 
 const App = () => {
-  const [query, setQuery] = useState('');
-  const [country, setCountry] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [searchHistory, setSearchHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const inputRef = useRef();
-  const [suggestions, setSuggestions] = useState([]);
+  const [consulta, setConsulta] = useState('');
+  const [pais, setPais] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState(null);
+  const [historico, setHistorico] = useState([]);
+  const [mostrarHistorico, setMostrarHistorico] = useState(false);
+  const refInput = useRef();
+  const [sugestoes, setSugestoes] = useState([]);
 
   useEffect(() => {
-    if (query && query.trim().length > 1) {
-      const fetchSuggestions = async () => {
+    refInput.current.focus();
+  }, []);
+
+  useEffect(() => {
+    if (consulta && consulta.trim().length > 1) {
+      const buscarSugestoes = async () => {
         try {
-          setLoading(true);
-          const response = await fetch(`${API_URL}/name/${query}`);
+          setCarregando(true);
+          const response = await fetch(`${URL_API}/name/${consulta}`);
           if (!response.ok) {
             throw new Error('Falha ao buscar os países');
           }
-          const data = await response.json();
-          setSuggestions(data);
-          setLoading(false);
+          const dados = await response.json();
+          setSugestoes(dados);
+          setCarregando(false);
         } catch (error) {
-          setError(error.message);
-          setLoading(false);
+          setErro(error.message);
+          setCarregando(false);
         }
       };
-      fetchSuggestions();
+      buscarSugestoes();
     } else {
-      setSuggestions([]);
+      setSugestoes([]);
     }
-  }, [query]);
+  }, [consulta]);
 
-  const handleSearch = async (e) => {
+  const realizarPesquisa = async (e) => {
     e.preventDefault();
-    if (query && query.trim().length > 1) {
+    if (consulta && consulta.trim().length > 1) {
       try {
-        setLoading(true);
-        const response = await fetch(`${API_URL}/name/${query}`);
+        setCarregando(true);
+        const response = await fetch(`${URL_API}/name/${consulta}`);
         if (!response.ok) {
           throw new Error('Falha ao buscar o país');
         }
-        const data = await response.json();
-        const filteredData = data.filter((item) =>
-          item.name.common.toLowerCase() === query.toLowerCase()
+        const dados = await response.json();
+        const dadosFiltrados = dados.filter((item) =>
+          item.name.common.toLowerCase() === consulta.toLowerCase()
         );
-        if (filteredData.length === 0) {
+        if (dadosFiltrados.length === 0) {
           throw new Error('País não encontrado');
         }
-        setCountry(filteredData[0]);
-        setSearchHistory((prevHistory) => [...prevHistory, filteredData[0]]);
-        setQuery('');
-        setError(null);
+        setPais(dadosFiltrados[0]);
+        setHistorico((historicoAnterior) => [...historicoAnterior, dadosFiltrados[0]]);
+        setConsulta('');
+        setErro(null);
       } catch (error) {
-        setError(error.message);
-        setLoading(false);
+        setErro(error.message);
+        setCarregando(false);
       }
     } else {
-      setError('Por favor, insira o nome completo de um país');
+      setErro('Por favor, insira o nome completo de um país');
     }
   };
 
-  const handleShowHistory = () => {
-    setShowHistory(!showHistory);
+  const alternarHistorico = () => {
+    setMostrarHistorico(!mostrarHistorico);
   };
 
   return (
     <div className="container mt-4">
       <h1 className="titulo mb-4">Pesquisa de Países</h1>
-      {error && <Alert variant="danger">{error}</Alert>}
-      <Form onSubmit={handleSearch}>
+      {erro && <Alert variant="danger">{erro}</Alert>}
+      <Form onSubmit={realizarPesquisa}>
         <Row className="mb-3">
           <Col>
             <div className="d-flex align-items-center">
               <Form.Control
                 type="text"
                 placeholder="Digite o nome do país"
-                ref={inputRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                ref={refInput}
+                value={consulta}
+                onChange={(e) => setConsulta(e.target.value)}
               />
-              {suggestions.length > 0 && (
+              {sugestoes.length > 0 && (
                 <ListGroup className="position-absolute">
-                  {suggestions.map((country, index) => (
+                  {sugestoes.map((pais, index) => (
                     <ListGroup.Item key={index}>
-                      {country.name.common}
+                      {pais.name.common}
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
@@ -97,31 +101,31 @@ const App = () => {
             </div>
           </Col>
           <Col xs="auto">
-            <Button variant="secondary" onClick={handleShowHistory}>
+            <Button variant="secondary" onClick={alternarHistorico}>
               Histórico de Pesquisa
             </Button>
           </Col>
         </Row>
         <Row>
           <Col>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? 'Carregando...' : 'Pesquisar'}
+            <Button variant="primary" type="submit" disabled={carregando}>
+              {carregando ? 'Carregando...' : 'Pesquisar'}
             </Button>
           </Col>
         </Row>
       </Form>
-      {showHistory && (
+      {mostrarHistorico && (
         <div className="border p-3 mt-4">
           <h5>Histórico de Pesquisas:</h5>
-          {searchHistory.map((country, index) => (
+          {historico.map((pais, index) => (
             <Card key={index} className="mt-2">
               <Card.Body>
-                <Card.Title>{country.name.common}</Card.Title>
-                <Card.Text>Capital: {country.capital}</Card.Text>
-                <Card.Text>População: {country.population}</Card.Text>
+                <Card.Title>{pais.name.common}</Card.Title>
+                <Card.Text>Capital: {pais.capital}</Card.Text>
+                <Card.Text>População: {pais.population}</Card.Text>
                 <Card.Img
                   variant="bottom"
-                  src={country.flags.svg}
+                  src={pais.flags.svg}
                   style={{ maxWidth: '100px' }}
                 />
               </Card.Body>
@@ -129,15 +133,15 @@ const App = () => {
           ))}
         </div>
       )}
-      {country && (
+      {pais && (
         <Card className="mt-4">
           <Card.Body>
-            <Card.Title>{country.name.common}</Card.Title>
-            <Card.Text>Capital: {country.capital}</Card.Text>
-            <Card.Text>População: {country.population}</Card.Text>
+            <Card.Title>{pais.name.common}</Card.Title>
+            <Card.Text>Capital: {pais.capital}</Card.Text>
+            <Card.Text>População: {pais.population}</Card.Text>
             <Card.Img
               variant="bottom"
-              src={country.flags.svg}
+              src={pais.flags.svg}
               style={{ maxWidth: '200px' }}
             />
           </Card.Body>
