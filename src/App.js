@@ -1,154 +1,92 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Form, Alert, Button, Card, Col, Row, ListGroup } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
+import axios from 'axios';
 import './App.css';
 
-const URL_API = 'https://restcountries.com/v3.1';
+function App() {
+  const [authToken, setAuthToken] = useState(localStorage.getItem('authToken') || '');
+  const [titulo, setTitulo] = useState('');
+  const [comentario, setComentario] = useState('');
+  const [mensagem, setMensagem] = useState('');
 
-const App = () => {
-  const [consulta, setConsulta] = useState('');
-  const [pais, setPais] = useState(null);
-  const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState(null);
-  const [historico, setHistorico] = useState([]);
-  const [mostrarHistorico, setMostrarHistorico] = useState(false);
-  const refInput = useRef();
-  const [sugestoes, setSugestoes] = useState([]);
-
-  useEffect(() => {
-    refInput.current.focus();
-  }, []);
-
-  useEffect(() => {
-    if (consulta && consulta.trim().length > 1) {
-      const buscarSugestoes = async () => {
-        try {
-          setCarregando(true);
-          const response = await fetch(`${URL_API}/name/${consulta}`);
-          if (!response.ok) {
-            throw new Error('Falha ao buscar os países');
-          }
-          const dados = await response.json();
-          setSugestoes(dados);
-          setCarregando(false);
-        } catch (error) {
-          setErro(error.message);
-          setCarregando(false);
-        }
-      };
-      buscarSugestoes();
-    } else {
-      setSugestoes([]);
-    }
-  }, [consulta]);
-
-  const realizarPesquisa = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (consulta && consulta.trim().length > 1) {
-      try {
-        setCarregando(true);
-        const response = await fetch(`${URL_API}/name/${consulta}`);
-        if (!response.ok) {
-          throw new Error('Falha ao buscar o país');
-        }
-        const dados = await response.json();
-        const dadosFiltrados = dados.filter((item) =>
-          item.name.common.toLowerCase() === consulta.toLowerCase()
-        );
-        if (dadosFiltrados.length === 0) {
-          throw new Error('País não encontrado');
-        }
-        setPais(dadosFiltrados[0]);
-        setHistorico((historicoAnterior) => [...historicoAnterior, dadosFiltrados[0]]);
-        setConsulta('');
-        setErro(null);
-      } catch (error) {
-        setErro(error.message);
-        setCarregando(false);
-      }
-    } else {
-      setErro('Por favor, insira o nome completo de um país');
+    try {
+      const response = await axios.post('/api/usuarios/login', {
+        username: 'raul',
+        password: 'raul',
+      });
+      setAuthToken(response.data.token);
+      localStorage.setItem('authToken', response.data.token);
+      setMensagem('Login bem-sucedido');
+    } catch (error) {
+      setMensagem('Erro ao fazer login');
     }
   };
 
-  const alternarHistorico = () => {
-    setMostrarHistorico(!mostrarHistorico);
+  const handleLogout = () => {
+    setAuthToken('');
+    localStorage.removeItem('authToken');
+    setMensagem('Logout realizado com sucesso');
+  };
+
+  const handleCriarPesquisa = async () => {
+    try {
+      await axios.post('/api/pesquisas', { titulo, comentario }, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+      setMensagem('Pesquisa criada com sucesso');
+    } catch (error) {
+      setMensagem('Erro ao criar pesquisa');
+    }
+  };
+
+  const buscarPesquisaPorTitulo = async () => {
+    try {
+      const response = await axios.get('/api/pesquisas/buscar', {
+        params: { titulo },
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      setMensagem(`Pesquisa encontrada: ${JSON.stringify(response.data)}`);
+    } catch (error) {
+      setMensagem('Erro ao buscar pesquisa');
+    }
   };
 
   return (
-    <div className="container mt-4">
-      <h1 className="titulo mb-4">Pesquisa de Países</h1>
-      {erro && <Alert variant="danger">{erro}</Alert>}
-      <Form onSubmit={realizarPesquisa}>
-        <Row className="mb-3">
-          <Col>
-            <div className="d-flex align-items-center">
-              <Form.Control
-                type="text"
-                placeholder="Digite o nome do país"
-                ref={refInput}
-                value={consulta}
-                onChange={(e) => setConsulta(e.target.value)}
-              />
-              {sugestoes.length > 0 && (
-                <ListGroup className="position-absolute">
-                  {sugestoes.map((pais, index) => (
-                    <ListGroup.Item key={index}>
-                      {pais.name.common}
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              )}
+    <Router>
+      <div className="container">
+        <h1 className="titulo">Projeto Final Web</h1>
+        <nav>
+          <Link to="/">Home</Link> | <Link to="/criar-pesquisa">Criar Pesquisa</Link>
+        </nav>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/criar-pesquisa" element={
+            <div>
+              <h2>Criar Pesquisa</h2>
+              <input type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" />
+              <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Comentário" />
+              <button onClick={handleCriarPesquisa}>Criar Pesquisa</button>
+              <button onClick={buscarPesquisaPorTitulo}>Buscar Pesquisa</button>
+              <p className={mensagem.includes('Erro') ? 'mensagem-erro' : 'mensagem-sucesso'}>{mensagem}</p>
             </div>
-          </Col>
-          <Col xs="auto">
-            <Button variant="secondary" onClick={alternarHistorico}>
-              Histórico de Pesquisa
-            </Button>
-          </Col>
-        </Row>
-        <Row>
-          <Col>
-            <Button variant="primary" type="submit" disabled={carregando}>
-              {carregando ? 'Carregando...' : 'Pesquisar'}
-            </Button>
-          </Col>
-        </Row>
-      </Form>
-      {mostrarHistorico && (
-        <div className="border p-3 mt-4">
-          <h5>Histórico de Pesquisas:</h5>
-          {historico.map((pais, index) => (
-            <Card key={index} className="mt-2">
-              <Card.Body>
-                <Card.Title>{pais.name.common}</Card.Title>
-                <Card.Text>Capital: {pais.capital}</Card.Text>
-                <Card.Text>População: {pais.population}</Card.Text>
-                <Card.Img
-                  variant="bottom"
-                  src={pais.flags.svg}
-                  style={{ maxWidth: '100px' }}
-                />
-              </Card.Body>
-            </Card>
-          ))}
-        </div>
-      )}
-      {pais && (
-        <Card className="mt-4">
-          <Card.Body>
-            <Card.Title>{pais.name.common}</Card.Title>
-            <Card.Text>Capital: {pais.capital}</Card.Text>
-            <Card.Text>População: {pais.population}</Card.Text>
-            <Card.Img
-              variant="bottom"
-              src={pais.flags.svg}
-              style={{ maxWidth: '200px' }}
-            />
-          </Card.Body>
-        </Card>
-      )}
+          } />
+        </Routes>
+        {authToken ? <button onClick={handleLogout}>Logout</button> : <button onClick={handleLogin}>Login</button>}
+      </div>
+    </Router>
+  );
+}
+
+function Home() {
+  return (
+    <div>
+      <h2>Bem-vindo ao Projeto Final Web</h2>
     </div>
   );
-};
+}
 
 export default App;

@@ -1,18 +1,13 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useState } from 'react';
 
-const ContextoPesquisa = createContext();
+export const AuthContext = createContext();
 
-export const useContextoPesquisa = () => useContext(ContextoPesquisa);
+export const AuthProvider = ({ children }) => {
+    const [auth, setAuth] = useState(null);
 
-export const ProvedorPesquisa = ({ children }) => {
-  const [resultadosPesquisa, setarResultadosPesquisa] = useState([]);
-  const [pesquisasAnteriores, setarPesquisasAnteriores] = useState([]);
-  const [mensagemErro, setarMensagemErro] = useState('');
-
-  return (
-    <ContextoPesquisa.Provider value={{ resultadosPesquisa, setarResultadosPesquisa, pesquisasAnteriores, setarPesquisasAnteriores, mensagemErro, setarMensagemErro }}>
-      {children}
-    </ContextoPesquisa.Provider>
-  );
+    return (
+        <AuthContext.Provider value={{ auth, setAuth }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
-
